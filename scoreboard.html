@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Top 10 Jogadores - Snake Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1abc9c;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .scoreboard {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      width: 300px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+    ol {
+      padding-left: 20px;
+      text-align: left;
+    }
+    li {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      text-decoration: none;
+      background: #1abc9c;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      transition: background 0.3s;
+    }
+    a:hover {
+      background: #16a085;
+    }
+  </style>
+</head>
+<body>
+  <div class="scoreboard">
+    <h1>🏆 Top 10 Jogadores</h1>
+    <ol id="scoreList"></ol>
+    <a href="index.html">⬅ Voltar ao Jogo</a>
+  </div>
+
+
+  <script>
+  fetch('http://localhost:3000/api/scores/')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Erro ao buscar o scoreboard da API.');
+      }
+      return response.json();
+    })
+    .then(data => {
+      const list = document.getElementById('scoreList');
+
+      // Ordenar por score (do maior para o menor)
+      data.sort((a, b) => b.score - a.score);
+
+      // Mostrar os 10 melhores
+      data.slice(0, 10).forEach(entry => {
+        const li = document.createElement('li');
+        li.textContent = `${entry.nickname}: ${entry.score}`;
+        list.appendChild(li);
+      });
+    })
+    .catch(error => {
+      console.error('Erro ao carregar o scoreboard:', error);
+    });
+</script>
+
+  <script>
+   /* const scoreboard = JSON.parse(localStorage.getItem('snakeScoreboard')) || [];
+    const list = document.getElementById('scoreList');
+
+    scoreboard.sort((a, b) => b.score - a.score);
+    scoreboard.slice(0, 10).forEach(entry => {
+      const li = document.createElement('li');
+      li.textContent = `${entry.name}: ${entry.score}`;
+      list.appendChild(li);
+    });*/
+  </script>
+</body>
+</html>

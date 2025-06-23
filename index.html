@@ -72,7 +72,7 @@
       width: 100%;
     }
     canvas {
-      background-color: #15f800;
+      background-color: #1302ff;
       border-radius: 8px;
     }
     .visible {
@@ -94,9 +94,13 @@
   <div id="entry" class="visible">
     <h1><img src="https://i.pinimg.com/736x/2d/63/50/2d6350d8c464f25230baa17dd104ce52.jpg" alt="logo"> Snake Game</h1>
     <input type="text" id="nickname" placeholder="Insere o teu nickname" />
-    <button onclick="startGame()">🎮 Jogar</button>
-    <h3>🏆 Top 10 Jogadores</h3>
-    <ol id="scoreboard"></ol>
+
+    <button onclick="startGame(false)">🎮 Modo Normal</button>
+    <button onclick="startGame(true)">♾️ Modo Infinito</button>
+
+    <a href="scoreboard.html">
+      <button>📊 Ver Scoreboard</button>
+</a>
   </div>
 
   <div id="game">
@@ -110,7 +114,16 @@
     <button onclick="goToEntry()">Voltar</button>
   </div>
 
+  <div id="pause-menu" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95); padding: 30px; border-radius: 20px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    z-index: 999; display: flex; flex-direction: column; gap: 15px; align-items: center;">
+    <h2>⏸️ Pausa</h2>
+    <button onclick="resumeGame()">🔁 Continuar</button>
+    <button onclick="exitToMenu()">🏠 Sair para o Menu</button>
+  </div>
+
   <script>
+    let isPaused = false;
     let canvas = document.getElementById('gameCanvas');
     let ctx = canvas.getContext('2d');
     let nickname = '';
@@ -126,7 +139,8 @@
     appleImg.src = './apple.png';
 
 
-      function drawCell(x, y, isHead = false) {
+    function drawCell(x, y, isHead = false) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0)';
       ctx.fillRect(x * 20, y * 20, 20, 20);
     }
 
@@ -143,9 +157,9 @@
       const x = part.x * 20;
       const y = part.y * 20;
       if (i === 0) {
-        ctx.drawImage(headImg, x, y, 18, 18); // cabeça
+        ctx.drawImage(headImg, x, y, 20, 20); // cabeça
       } else {
-        ctx.drawImage(bodyImg, x, y, 18, 18); // corpo
+        ctx.drawImage(bodyImg, x, y, 20, 20); // corpo
       }
     }
   }
@@ -177,36 +191,68 @@
       });
     }
 
-  function startGame() {
-    nickname = document.getElementById('nickname').value.trim();
-    if (!nickname) return alert('Por favor insere um nickname!');
+    let isInfinite = false;
 
-    const imagesToLoad = [appleImg, headImg, bodyImg];
-    let loadedCount = 0;
+function startGame(infiniteMode = false) {
+  nickname = document.getElementById('nickname').value.trim();
+  if (!nickname) return alert('Por favor insere um nickname!');
 
-    imagesToLoad.forEach(img => {
-      img.onload = () => {
-        loadedCount++;
-        if (loadedCount === imagesToLoad.length) {
-          document.getElementById('entry').classList.remove('visible');
-          document.getElementById('game').classList.add('visible');
+  isInfinite = infiniteMode;
 
-          snake = [{x: 10, y: 10}];
-          direction = 'right';
-          score = 0;
-          document.getElementById('score').textContent = score;
-          spawnFood();
+  const imagesToLoad = [appleImg, headImg, bodyImg];
+  let loadedCount = 0;
 
-          gameLoop = setInterval(gameTick, 150);
-          window.addEventListener('keydown', changeDirection);
-        }
-      };
-    });
+  imagesToLoad.forEach(img => {
+    img.onload = () => {
+      loadedCount++;
+      if (loadedCount === imagesToLoad.length) {
+        document.getElementById('entry').classList.remove('visible');
+        document.getElementById('game').classList.add('visible');
 
-    if (imagesToLoad.every(img => img.complete)) {
-      imagesToLoad.forEach(img => img.onload());
+        snake = [{ x: 10, y: 10 }];
+        direction = 'right';
+        score = 0;
+        document.getElementById('score').textContent = score;
+        spawnFood();
+
+        gameLoop = setInterval(gameTick, 150);
+        window.addEventListener('keydown', changeDirection);
+        window.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && document.getElementById('game').classList.contains('visible')) {
+    if (isPaused) {
+      resumeGame();
+    } else {
+      pauseGame();
     }
   }
+});
+      }
+    };
+  });
+
+  if (imagesToLoad.every(img => img.complete)) {
+    imagesToLoad.forEach(img => img.onload());
+  }
+}
+
+      function pauseGame() {
+        isPaused = true;
+        document.getElementById('pause-menu').style.display = 'flex';
+      }
+
+      function resumeGame() {
+        isPaused = false;
+        document.getElementById('pause-menu').style.display = 'none';
+      }
+
+      function exitToMenu() {
+        clearInterval(gameLoop);
+        isPaused = false;
+        document.getElementById('pause-menu').style.display = 'none';
+        document.getElementById('game').classList.remove('visible');
+        document.getElementById('entry').classList.add('visible');
+        updateScoreboard();
+      }
 
    function animateGameOver() {
       canvas.classList.add('shake');
@@ -224,17 +270,51 @@
       }, 100);
     }
 
+    function explosionAnimation(x, y) {
+      let radius = 0;
+      let alpha = 1;
+      const interval = setInterval(() => {
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x * 20 + 10, y * 20 + 10, radius, 0, 2 * Math.PI);
+        ctx.fill();
+        radius += 5;
+        alpha -= 0.1;
+        if (alpha <= 0) {
+          clearInterval(interval);
+          document.getElementById('game').classList.remove('visible');
+          document.getElementById('game-over').classList.add('visible');
+          document.getElementById('finalScore').textContent = score;
+          scoreboard.push({ name: nickname, score });
+          localStorage.setItem('snakeScoreboard', JSON.stringify(scoreboard));
+        }
+      }, 50);
+    }
+
     function gameTick() {
       let head = {...snake[0]};
+      if (isPaused) return
       if (direction === 'right') head.x++;
       if (direction === 'left') head.x--;
       if (direction === 'up') head.y--;
       if (direction === 'down') head.y++;
 
-      const hitWall = head.x < 0 || head.y < 0 || head.x >= 20 || head.y >= 20;
-      const hitSelf = snake.some(seg => seg.x === head.x && seg.y === head.y);
+      if (isInfinite) {
+        if (head.x < 0) head.x = 19;
+        if (head.x > 19) head.x = 0;
+        if (head.y < 0) head.y = 19;
+        if (head.y > 19) head.y = 0;
+      } else {
+        const hitWall = head.x < 0 || head.y < 0 || head.x >= 20 || head.y >= 20;
+        if (hitWall) {
+          clearInterval(gameLoop);
+          animateGameOver();
+          return;
+        }
+      }
 
-      if (hitWall || hitSelf) {
+      const hitSelf = snake.some(seg => seg.x === head.x && seg.y === head.y);
+      if (hitSelf) {
         clearInterval(gameLoop);
         animateGameOver();
         return;
@@ -263,14 +343,43 @@
       if (key === 'ArrowRight' && direction !== 'left') direction = 'right';
     }
 
-    function endGame() {
-      document.getElementById('game').classList.remove('visible');
-      document.getElementById('game-over').classList.add('visible');
-      document.getElementById('finalScore').textContent = score;
+function endGame() {
+  document.getElementById('game').classList.remove('visible');
+  document.getElementById('game-over').classList.add('visible');
+  document.getElementById('finalScore').textContent = score;
 
-      scoreboard.push({ name: nickname, score });
-      localStorage.setItem('snakeScoreboard', JSON.stringify(scoreboard));
+  // Enviar para o backend (POST)
+  const dados = {
+    datascore: new Date().toISOString(),
+    nickname: nickname,
+    game: "Snake Game",
+    score: score
+  };
+
+  fetch('http://localhost:3000/api/scores/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(dados)
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Erro ao guardar score no servidor.');
     }
+    return response.json();
+  })
+  .then(data => {
+    console.log('Score guardado com sucesso:', data);
+  })
+  .catch(error => {
+    console.error('Erro ao guardar score:', error);
+  });
+
+  // Local (opcional)
+  scoreboard.push({ name: nickname, score });
+  localStorage.setItem('snakeScoreboard', JSON.stringify(scoreboard));
+}
 
     function goToEntry() {
       document.getElementById('game-over').classList.remove('visible');
